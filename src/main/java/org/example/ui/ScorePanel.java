@@ -37,7 +37,7 @@ public class ScorePanel extends JPanel {
             model.setRowCount(0);
             for (int i = 0; i < players.size(); i++) {
                 PlayerDTO p = players.get(i);
-                model.addRow(new Object[]{i+1, p.getName(), p.getScore()});
+                model.addRow(new Object[]{i+1, p.name(), p.score()});
             }
         } catch (SQLException | ClassNotFoundException e) {
             throw new RuntimeException(e);

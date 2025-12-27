@@ -1,4 +1,4 @@
-package org.example;
+package org.example.client;
 
 import org.example.actions.MoveAction;
 import org.example.entities.Player;
@@ -25,7 +25,6 @@ public class PlayerGame extends JPanel {
 
     private static final String SERVER_ADDRESS = "localhost";
     private static final int SERVER_PORT = 50000;
-    //    private static final int TIMEOUT = 5000; // 5 секунд
     private static final int BUFFER_SIZE = 4096;
 
     private DatagramSocket socket;
@@ -51,85 +50,6 @@ public class PlayerGame extends JPanel {
         //setFocusable(true);
     }
 
-    private void readDataThread() {
-        new Thread(() -> {
-            try {
-                while (true) {
-                    byte[] receiveData = new byte[BUFFER_SIZE];
-                    DatagramPacket receivePacket = new DatagramPacket(receiveData, receiveData.length);
-                    socket.receive(receivePacket);
-
-                    DataInputStream dis = new DataInputStream(new ByteArrayInputStream(receivePacket.getData(), 0, receivePacket.getLength()));
-
-                    byte msgType = dis.readByte();
-
-                    if (MESSAGETYPE.CONNECT.getCode() == msgType) {
-                        myPlayerId = dis.readInt();
-                    } else if(MESSAGETYPE.UPDATE.getCode() == msgType) {
-                        int playerCount = dis.readInt();
-                        List<Player> newPlayers = new ArrayList<>();
-                        for (int count = 0; count < playerCount; count++) {
-                            int playerId = dis.readInt();
-
-                            int lenAddr = dis.readInt();
-                            byte[] addr = new byte[lenAddr];
-                            dis.readFully(addr);
-
-                            InetAddress address = InetAddress.getByAddress(addr);
-                            int port = dis.readInt();
-
-                            int headX = dis.readInt();
-                            int headY = dis.readInt();
-
-                            Tile head = new Tile(headX, headY);
-
-                            DIRECTION dir = DIRECTION.values()[dis.readByte()];
-
-                            int ownedCount = dis.readInt();
-                            Set<Tile> owned = new HashSet<>();
-                            for (int i = 0; i < ownedCount; i++) {
-                                owned.add(new Tile(dis.readInt(), dis.readInt()));
-                            }
-
-                            int tailedCount = dis.readInt();
-                            Set<Tile> tailed = new HashSet<>();
-                            for (int i = 0; i < tailedCount; i++) {
-                                tailed.add(new Tile(dis.readInt(), dis.readInt()));
-                            }
-
-                            Color color = new Color(dis.readInt());
-
-                            boolean active = dis.readBoolean();
-
-                            Player player = new Player(address, port, playerId, head, owned, tailed, dir, color, active);
-                            newPlayers.add(player);
-
-                            if (myPlayerId == player.getId()) {
-                                myPlayer = player;
-                                if (!myPlayer.isActive() && !gameOverHandled) {
-                                    gameOverHandled = true;
-                                    SwingUtilities.invokeLater(frame::showStart);
-                                    break;
-                                }
-                            }
-
-                        }
-                        SwingUtilities.invokeLater(() -> {
-                            players.clear();
-                            players.addAll(newPlayers);
-                            repaint();
-                        });
-
-                    }
-                }
-
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            }
-
-        }).start();
-    }
-
     public void start() {
         try {
 
@@ -139,19 +59,7 @@ public class PlayerGame extends JPanel {
             setupKeyBindings();
             readDataThread();
 
-            byte[] data = myPlayer.getName().getBytes(StandardCharsets.UTF_8);
-            ByteArrayOutputStream bos = new ByteArrayOutputStream();
-            DataOutputStream dos = new DataOutputStream(bos);
-            dos.write(0);
-            dos.writeInt(data.length);
-            dos.write(data);
-
-            DatagramPacket sendPacket = new DatagramPacket(
-                    bos.toByteArray(),
-                    bos.size(),
-                    serverAddress,
-                    SERVER_PORT
-            );
+            DatagramPacket sendPacket = getDatagramPacket();
             socket.send(sendPacket);
         } catch (IOException e) {
             System.err.println("Ошибка клиента: " + e.getMessage());
@@ -179,6 +87,104 @@ public class PlayerGame extends JPanel {
         } catch (IOException e) {
             logger.warn("Ошибка при отключении", e);
         }
+    }
+
+    private void readDataThread() {
+        new Thread(() -> {
+            try {
+                while (true) {
+                    byte[] receiveData = new byte[BUFFER_SIZE];
+                    DatagramPacket receivePacket = new DatagramPacket(receiveData, receiveData.length);
+                    socket.receive(receivePacket);
+
+                    DataInputStream dis = new DataInputStream(new ByteArrayInputStream(receivePacket.getData(), 0, receivePacket.getLength()));
+
+                    byte msgType = dis.readByte();
+
+                    if (MESSAGETYPE.CONNECT.getCode() == msgType) {
+                        myPlayerId = dis.readInt();
+                    } else if(MESSAGETYPE.UPDATE.getCode() == msgType) {
+                        readData(dis);
+                    }
+                }
+
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+
+        }).start();
+    }
+
+    private void readData(DataInputStream dis) throws IOException {
+        int playerCount = dis.readInt();
+        List<Player> newPlayers = new ArrayList<>();
+        for (int count = 0; count < playerCount; count++) {
+            int playerId = dis.readInt();
+
+            int lenAddr = dis.readInt();
+            byte[] addr = new byte[lenAddr];
+            dis.readFully(addr);
+
+            InetAddress address = InetAddress.getByAddress(addr);
+            int port = dis.readInt();
+
+            int headX = dis.readInt();
+            int headY = dis.readInt();
+
+            Tile head = new Tile(headX, headY);
+
+            DIRECTION dir = DIRECTION.values()[dis.readByte()];
+
+            int ownedCount = dis.readInt();
+            Set<Tile> owned = new HashSet<>();
+            for (int i = 0; i < ownedCount; i++) {
+                owned.add(new Tile(dis.readInt(), dis.readInt()));
+            }
+
+            int tailedCount = dis.readInt();
+            Set<Tile> tailed = new HashSet<>();
+            for (int i = 0; i < tailedCount; i++) {
+                tailed.add(new Tile(dis.readInt(), dis.readInt()));
+            }
+
+            Color color = new Color(dis.readInt());
+
+            boolean active = dis.readBoolean();
+
+            Player player = new Player(address, port, playerId, head, owned, tailed, dir, color, active);
+            newPlayers.add(player);
+
+            if (myPlayerId == player.getId()) {
+                myPlayer = player;
+                if (!myPlayer.isActive() && !gameOverHandled) {
+                    gameOverHandled = true;
+                    SwingUtilities.invokeLater(frame::showStart);
+                    break;
+                }
+            }
+
+        }
+        SwingUtilities.invokeLater(() -> {
+            players.clear();
+            players.addAll(newPlayers);
+            repaint();
+        });
+    }
+
+    private DatagramPacket getDatagramPacket() throws IOException {
+        byte[] data = myPlayer.getName().getBytes(StandardCharsets.UTF_8);
+        ByteArrayOutputStream bos = new ByteArrayOutputStream();
+        DataOutputStream dos = new DataOutputStream(bos);
+        dos.write(MESSAGETYPE.CONNECT.getCode());
+        dos.writeInt(data.length);
+        dos.write(data);
+
+        return new DatagramPacket(
+                bos.toByteArray(),
+                bos.size(),
+                serverAddress,
+                SERVER_PORT
+        );
     }
 
 

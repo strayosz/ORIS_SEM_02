@@ -1,13 +1,10 @@
 package org.example.ui;
 
-import org.example.PlayerGame;
+import org.example.client.PlayerGame;
 import org.example.actions.CloseAction;
 
 import javax.swing.*;
 import java.awt.*;
-import java.awt.event.WindowAdapter;
-import java.awt.event.WindowEvent;
-import java.awt.event.WindowListener;
 
 public class PlayerFrame extends JFrame {
     private final CardLayout cardLayout;
@@ -23,6 +20,7 @@ public class PlayerFrame extends JFrame {
         setLocationRelativeTo(null);
         setResizable(false);
         setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
+        addWindowListener(new CloseAction(this));
 
         startPanel = new PlayerStartPanel(this);
         scorePanel = new ScorePanel(this);
@@ -40,7 +38,6 @@ public class PlayerFrame extends JFrame {
         setVisible(true);
         pack();
 
-        addWindowListener(new CloseAction(this));
     }
 
     public void showStart() {
