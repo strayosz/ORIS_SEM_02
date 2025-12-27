@@ -27,16 +27,6 @@ import java.util.concurrent.TimeUnit;
 
 public class Server {
 
-    public static void main(String[] args){
-        try {
-            DBConnection.init();
-        } catch (ClassNotFoundException e) {
-            throw new RuntimeException(e);
-        }
-        Server server = new Server(50, 50, 300);
-        server.start();
-    }
-
     Logger logger = LoggerFactory.getLogger(Server.class);
 
 
