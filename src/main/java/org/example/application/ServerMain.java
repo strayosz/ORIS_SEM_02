@@ -1,4 +1,4 @@
-package org.example;
+package org.example.application;
 
 import org.example.db.DBConnection;
 import org.example.server.Server;

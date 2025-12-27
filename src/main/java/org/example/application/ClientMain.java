@@ -1,4 +1,4 @@
-package org.example;
+package org.example.application;
 
 import org.example.ui.PlayerFrame;
 
