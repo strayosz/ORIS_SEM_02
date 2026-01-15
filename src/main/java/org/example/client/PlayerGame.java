@@ -2,6 +2,7 @@ package org.example.client;
 
 import org.example.actions.MoveAction;
 import org.example.entities.Player;
+import org.example.entities.PlayerDTO;
 import org.example.entities.Tile;
 import org.example.enums.DIRECTION;
 import org.example.enums.MESSAGETYPE;
@@ -66,7 +67,7 @@ public class PlayerGame extends JPanel {
         }
     }
 
-    public void disconnect(){
+    public void disconnect() {
         try {
             ByteArrayOutputStream bos = new ByteArrayOutputStream();
             DataOutputStream dos = new DataOutputStream(bos);
@@ -89,6 +90,57 @@ public class PlayerGame extends JPanel {
         }
     }
 
+    public List<PlayerDTO> getScores() {
+        try {
+            List<PlayerDTO> players = new ArrayList<>();
+            socket = new DatagramSocket();
+            serverAddress = InetAddress.getByName(SERVER_ADDRESS);
+
+            ByteArrayOutputStream bos = new ByteArrayOutputStream();
+            DataOutputStream dos = new DataOutputStream(bos);
+
+            dos.writeByte(MESSAGETYPE.SCORE.getCode());
+
+            DatagramPacket packet = new DatagramPacket(
+                    bos.toByteArray(),
+                    bos.size(),
+                    serverAddress,
+                    SERVER_PORT
+            );
+
+            socket.send(packet);
+
+            while (true) {
+                byte[] receiveData = new byte[BUFFER_SIZE];
+                DatagramPacket receivePacket = new DatagramPacket(receiveData, receiveData.length);
+                socket.receive(receivePacket);
+
+                DataInputStream dis = new DataInputStream(new ByteArrayInputStream(receivePacket.getData(), 0, receivePacket.getLength()));
+
+                byte msgType = dis.readByte();
+
+                if (MESSAGETYPE.SCORE.getCode() == msgType) {
+                    int rows = dis.readInt();
+                    for (int i = 0; i < rows; i++) {
+                        int id = dis.readInt();
+
+                        byte[] data = new byte[dis.readInt()];
+                        dis.readFully(data);
+                        String name = new String(data, StandardCharsets.UTF_8);
+                        int score = dis.readInt();
+
+                        players.add(new PlayerDTO(id, name, score));
+                    }
+                    break;
+                }
+            }
+            return players;
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+
+    }
+
     private void readDataThread() {
         new Thread(() -> {
             try {
@@ -103,7 +155,7 @@ public class PlayerGame extends JPanel {
 
                     if (MESSAGETYPE.CONNECT.getCode() == msgType) {
                         myPlayerId = dis.readInt();
-                    } else if(MESSAGETYPE.UPDATE.getCode() == msgType) {
+                    } else if (MESSAGETYPE.UPDATE.getCode() == msgType) {
                         readData(dis);
                     }
                 }
@@ -175,7 +227,7 @@ public class PlayerGame extends JPanel {
         byte[] data = myPlayer.getName().getBytes(StandardCharsets.UTF_8);
         ByteArrayOutputStream bos = new ByteArrayOutputStream();
         DataOutputStream dos = new DataOutputStream(bos);
-        dos.write(MESSAGETYPE.CONNECT.getCode());
+        dos.writeByte(MESSAGETYPE.CONNECT.getCode());
         dos.writeInt(data.length);
         dos.write(data);
 
@@ -209,7 +261,7 @@ public class PlayerGame extends JPanel {
             g2d.drawLine(0, y, boardWidth, y);
         }
         for (Player player : players) {
-            if(!player.isActive()){
+            if (!player.isActive()) {
                 continue;
             }
             Set<Tile> owned = player.getOwned();

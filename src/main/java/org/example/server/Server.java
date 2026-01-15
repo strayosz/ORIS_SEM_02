@@ -1,8 +1,8 @@
 package org.example.server;
 
-import org.example.db.DBConnection;
 import org.example.entities.Grid;
 import org.example.entities.Player;
+import org.example.entities.PlayerDTO;
 import org.example.entities.Tile;
 import org.example.enums.DIRECTION;
 import org.example.enums.MESSAGETYPE;
@@ -91,6 +91,8 @@ public class Server {
             handleMove(dis, receivePacket);
         } else if (MESSAGETYPE.DISCONNECT.getCode() == msgType) {
             handleDisconnect(dis);
+        } else if (MESSAGETYPE.SCORE.getCode() == msgType) {
+            handleScore(receivePacket);
         }
     }
 
@@ -146,6 +148,27 @@ public class Server {
             players.remove(player);
             logger.info("Игрок {} отключился", playerId);
         }
+    }
+
+    private void handleScore(DatagramPacket dis) throws SQLException, ClassNotFoundException, IOException {
+        ByteArrayOutputStream bos = new ByteArrayOutputStream();
+        DataOutputStream dos = new DataOutputStream(bos);
+
+        dos.writeByte(MESSAGETYPE.SCORE.getCode());
+
+        writeScore(dos, repository.getAll());
+
+        byte[] data = bos.toByteArray();
+        int length = bos.size();
+
+        DatagramPacket packet = new DatagramPacket(
+                data,
+                length,
+                dis.getAddress(),
+                dis.getPort()
+        );
+
+        socket.send(packet);
     }
 
     private void startGameLoop() {
@@ -289,6 +312,19 @@ public class Server {
         dos.writeBoolean(player.isActive());
     }
 
+    private void writeScore(DataOutputStream dos, List<PlayerDTO> players) throws IOException {
+        dos.writeInt(players.size());
+
+        for(PlayerDTO playerDTO: players){
+            dos.writeInt(playerDTO.id());
+
+            byte[] data = playerDTO.name().getBytes(StandardCharsets.UTF_8);
+            dos.writeInt(data.length);
+            dos.write(data);
+
+            dos.writeInt(playerDTO.score());
+        }
+    }
 
     private void clearPlayer(Player player) throws SQLException, ClassNotFoundException {
         repository.addPlayer(player);

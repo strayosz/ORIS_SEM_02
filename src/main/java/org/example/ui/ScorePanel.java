@@ -11,10 +11,11 @@ import java.util.List;
 
 public class ScorePanel extends JPanel {
 
-    private final PlayerRepository repository = new PlayerRepository();
     private DefaultTableModel model;
+    private final PlayerFrame frame;
 
     public ScorePanel(PlayerFrame frame) {
+        this.frame = frame;
         setLayout(new BorderLayout());
         createTable();
         JButton backButton = new JButton("Назад");
@@ -32,16 +33,11 @@ public class ScorePanel extends JPanel {
 
     public void updateData() {
         List<PlayerDTO> players = null;
-        try {
-            players = repository.getAll();
-            model.setRowCount(0);
-            for (int i = 0; i < players.size(); i++) {
-                PlayerDTO p = players.get(i);
-                model.addRow(new Object[]{i+1, p.name(), p.score()});
-            }
-        } catch (SQLException | ClassNotFoundException e) {
-            throw new RuntimeException(e);
+        players = frame.getGamePanel().getScores();
+        model.setRowCount(0);
+        for (int i = 0; i < players.size(); i++) {
+            PlayerDTO p = players.get(i);
+            model.addRow(new Object[]{i + 1, p.name(), p.score()});
         }
-
     }
 }

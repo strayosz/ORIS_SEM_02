@@ -41,11 +41,11 @@ public class PlayerFrame extends JFrame {
     }
 
     public void showStart() {
-        scorePanel.updateData();
         cardLayout.show(cards, "START");
     }
 
     public void showScore() {
+        scorePanel.updateData();
         cardLayout.show(cards, "SCORE");
     }
 
